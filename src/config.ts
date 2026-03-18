@@ -6,7 +6,7 @@
  */
 
 export const SITE = {
-  website: "https://blog.example.com/", // 部署后替换为真实域名
+  website: "https://yumx3499.github.io/blog/", // GitHub Pages 地址
   author: "码上就懂",                     // 站点作者名
   profile: "/about",                     // 个人主页链接
   desc: "写给下一个凌晨三点还在 Google 的你", // 站点描述 / Slogan
