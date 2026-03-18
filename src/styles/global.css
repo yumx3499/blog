@@ -1,0 +1,99 @@
+/**
+ * 全局样式 — 码上就懂
+ *
+ * 配色方案严格遵循 design-research.md 规范：
+ * 亮色主题：#ffffff 背景 + #2563eb 强调
+ * 暗色主题：#0f172a 背景 + #60a5fa 强调
+ * 字体：思源黑体(Noto Sans SC) + Inter + JetBrains Mono
+ */
+
+@import "tailwindcss";
+@import "./typography.css";
+
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+/**
+ * 亮色主题 — 极简阅读风格
+ * 背景纯白，卡片微灰，文字深色，强调蓝
+ */
+:root,
+html[data-theme="light"] {
+  --background: #ffffff;       /* 主背景：纯白 */
+  --foreground: #1e293b;       /* 文字主色：深灰蓝 */
+  --accent: #2563eb;           /* 链接/强调：蓝色 */
+  --muted: #64748b;            /* 文字副色：中灰 */
+  --border: #e2e8f0;           /* 边框：浅灰 */
+  --card-bg: #f8fafc;          /* 卡片背景：极浅蓝灰 */
+}
+
+/**
+ * 暗色主题 — 护眼深色
+ * 深海蓝黑背景，浅色文字，浅蓝强调
+ */
+html[data-theme="dark"] {
+  --background: #0f172a;       /* 主背景：深海蓝黑 */
+  --foreground: #f1f5f9;       /* 文字主色：近白 */
+  --accent: #60a5fa;           /* 链接/强调：浅蓝 */
+  --muted: #94a3b8;            /* 文字副色：灰蓝 */
+  --border: #334155;           /* 边框：深灰蓝 */
+  --card-bg: #1e293b;          /* 卡片背景：深蓝灰 */
+}
+
+@theme inline {
+  --font-app: "Inter", "Noto Sans SC", system-ui, -apple-system, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-accent: var(--accent);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-card-bg: var(--card-bg);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-accent/75;
+    scrollbar-width: auto;
+    scrollbar-color: var(--color-muted) transparent;
+  }
+  html {
+    @apply overflow-y-scroll scroll-smooth;
+  }
+  body {
+    @apply flex min-h-svh flex-col bg-background font-app text-foreground selection:bg-accent/75 selection:text-background;
+  }
+  a,
+  button {
+    @apply outline-offset-1 outline-accent focus-visible:no-underline focus-visible:outline-2 focus-visible:outline-dashed;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+@utility max-w-app {
+  @apply max-w-3xl;
+}
+
+@utility app-layout {
+  @apply mx-auto w-full max-w-app px-4;
+}
+
+.active-nav {
+  @apply underline decoration-wavy decoration-2 underline-offset-8;
+}
+
+/* 锚点跳转时的偏移 */
+:target {
+  scroll-margin-block: 1rem;
+}
+
+/* 文章卡片背景 */
+.article-card {
+  @apply rounded-lg border border-border bg-card-bg p-6 transition-colors;
+}
+
+/* 代码块样式微调 */
+.prose pre {
+  @apply rounded-lg border border-border;
+}
