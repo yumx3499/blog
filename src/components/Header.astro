@@ -87,6 +87,11 @@ const isActive = (path: string) => {
             关于
           </a>
         </li>
+        <li class="col-span-2">
+          <a href={import.meta.env.BASE_URL + "/admin"} class:list={{ "active-nav": isActive("/admin") }}>
+            写文章
+          </a>
+        </li>
         {
           SITE.showArchives && (
             <li class="col-span-2">

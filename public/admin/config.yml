@@ -1,0 +1,32 @@
+backend:
+  name: github
+  repo: yumx3499/blog
+  branch: master
+  base_url: https://github.com
+
+media_folder: "public/assets/blog"
+public_folder: "/assets/blog"
+
+slug:
+  encoding: "ascii"
+  clean_accents: true
+
+collections:
+  - name: "blog"
+    label: "博客文章"
+    folder: "src/data/blog"
+    create: true
+    slug: "{{slug}}"
+    fields:
+      - { label: "标题", name: "title", widget: "string" }
+      - { label: "发布日期", name: "pubDatetime", widget: "datetime", format: "YYYY-MM-DDTHH:mm:ssZ" }
+      - { label: "修改日期", name: "modDatetime", widget: "datetime", format: "YYYY-MM-DDTHH:mm:ssZ", required: false }
+      - { label: "作者", name: "author", widget: "string", default: "码上就懂" }
+      - { label: "URL Slug", name: "slug", widget: "string", required: false }
+      - { label: "草稿", name: "draft", widget: "boolean", default: false }
+      - { label: "标签", name: "tags", widget: "list", default: ["默认"] }
+      - { label: "描述", name: "description", widget: "string" }
+      - { label: "封面图", name: "ogImage", widget: "image", required: false }
+      - { label: "正文", name: "body", widget: "markdown" }
+    editor:
+      preview: true
