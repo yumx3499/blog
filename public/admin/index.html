@@ -1,21 +1,416 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>博客管理 - 码上就懂</title>
-  <script src="https://unpkg.com/decap-cms@^3.1.11/dist/decap-cms.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>写文章 — 码上就懂</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
   <style>
-    /* 暗色模式适配 */
-    :root {
-      --nc-primary: #1a8917;
-    }
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d1117; color: #e6edf3; min-height: 100vh; }
+    
+    /* 登录页 */
+    #login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+    .login-card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 40px; max-width: 460px; width: 100%; text-align: center; }
+    .login-card h1 { font-size: 24px; margin-bottom: 8px; }
+    .login-card p { color: #8b949e; margin-bottom: 24px; font-size: 14px; }
+    .login-card input { width: 100%; padding: 12px 16px; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; color: #e6edf3; font-size: 14px; margin-bottom: 16px; }
+    .login-card input:focus { outline: none; border-color: #58a6ff; }
+    .login-card button { width: 100%; padding: 12px; background: #238636; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: 600; }
+    .login-card button:hover { background: #2ea043; }
+    .login-hint { font-size: 12px; color: #484f58; margin-top: 16px; line-height: 1.6; }
+    
+    /* 编辑器页 */
+    #editor-screen { display: none; }
+    .topbar { background: #161b22; border-bottom: 1px solid #30363d; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+    .topbar h2 { font-size: 18px; }
+    .topbar-actions { display: flex; gap: 12px; align-items: center; }
+    .btn { padding: 8px 16px; border-radius: 6px; border: 1px solid #30363d; background: #21262d; color: #e6edf3; cursor: pointer; font-size: 14px; }
+    .btn:hover { background: #30363d; }
+    .btn-primary { background: #238636; border-color: #238636; }
+    .btn-primary:hover { background: #2ea043; }
+    .btn-danger { color: #f85149; }
+    .btn-danger:hover { background: #da3633; color: white; border-color: #da3633; }
+    
+    .main { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    
+    /* 元数据表单 */
+    .meta-form { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .meta-form .full-width { grid-column: 1 / -1; }
+    .form-group label { display: block; font-size: 13px; color: #8b949e; margin-bottom: 6px; }
+    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 8px 12px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; color: #e6edf3; font-size: 14px; }
+    .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #58a6ff; }
+    .form-group textarea { resize: vertical; min-height: 60px; }
+    .checkbox-group { display: flex; align-items: center; gap: 8px; padding-top: 24px; }
+    .checkbox-group input { width: auto; }
+    
+    /* EasyMDE 覆盖 */
+    .EasyMDEContainer { background: #161b22; border: 1px solid #30363d; border-radius: 8px; overflow: hidden; }
+    .EasyMDEContainer .CodeMirror { background: #0d1117; color: #e6edf3; border: none; font-size: 15px; line-height: 1.7; }
+    .EasyMDEContainer .CodeMirror-cursor { border-left: 2px solid #58a6ff; }
+    .EasyMDEContainer .CodeMirror-selected { background: #264f78 !important; }
+    .EasyMDEContainer .editor-toolbar { background: #161b22; border: none; border-bottom: 1px solid #30363d; }
+    .EasyMDEContainer .editor-toolbar button { color: #8b949e; }
+    .EasyMDEContainer .editor-toolbar button:hover { background: #30363d; color: #e6edf3; }
+    .EasyMDEContainer .editor-toolbar button.active { background: #1f6feb; color: white; }
+    .EasyMDEContainer .editor-preview, .EasyMDEContainer .editor-preview-side { background: #161b22; color: #e6edf3; }
+    .EasyMDEContainer .editor-preview pre, .EasyMDEContainer .editor-preview-side pre { background: #0d1117; }
+    .EasyMDEContainer .editor-preview code, .EasyMDEContainer .editor-preview-side code { background: #30363d; padding: 2px 6px; border-radius: 4px; }
+    
+    /* 文章列表 */
+    .post-list { background: #161b22; border: 1px solid #30363d; border-radius: 8px; overflow: hidden; }
+    .post-item { padding: 16px 20px; border-bottom: 1px solid #21262d; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+    .post-item:hover { background: #1c2128; }
+    .post-item:last-child { border-bottom: none; }
+    .post-title { font-weight: 500; }
+    .post-meta { font-size: 12px; color: #484f58; }
+    .post-draft { background: #da3633; color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 8px; }
+    
+    /* 通知 */
+    .toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: 8px; font-size: 14px; z-index: 999; opacity: 0; transform: translateY(10px); transition: all 0.3s; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.success { background: #238636; color: white; }
+    .toast.error { background: #da3633; color: white; }
+    .toast.info { background: #1f6feb; color: white; }
+    
+    /* 响应式 */
+    @media (max-width: 640px) {
+      .meta-form { grid-template-columns: 1fr; }
+      .topbar { padding: 12px 16px; }
+      .main { padding: 16px; }
     }
   </style>
 </head>
 <body>
+
+<!-- 登录页 -->
+<div id="login-screen">
+  <div class="login-card">
+    <h1>✍️ 写文章</h1>
+    <p>码上就懂 — 博客编辑器</p>
+    <input type="password" id="token-input" placeholder="输入 GitHub Personal Access Token">
+    <button onclick="login()">进入编辑器</button>
+    <div class="login-hint">
+      Token 只存在你的浏览器里，不会上传到任何服务器。<br>
+      <a href="https://github.com/settings/tokens" target="_blank" style="color:#58a6ff">去 GitHub 创建 Token →</a>
+    </div>
+  </div>
+</div>
+
+<!-- 编辑器页 -->
+<div id="editor-screen">
+  <div class="topbar">
+    <h2>✍️ 码上就懂</h2>
+    <div class="topbar-actions">
+      <button class="btn" onclick="showListView()">← 文章列表</button>
+      <button class="btn btn-primary" onclick="publishPost()">🚀 发布</button>
+      <button class="btn btn-danger" onclick="logout()">退出</button>
+    </div>
+  </div>
+  
+  <div class="main">
+    <!-- 文章列表视图 -->
+    <div id="list-view">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3>📝 所有文章</h3>
+        <button class="btn btn-primary" onclick="newPost()">+ 写新文章</button>
+      </div>
+      <div id="post-list" class="post-list">加载中...</div>
+    </div>
+    
+    <!-- 编辑器视图 -->
+    <div id="edit-view" style="display:none">
+      <div class="meta-form">
+        <div class="form-group full-width">
+          <label>标题 *</label>
+          <input type="text" id="post-title" placeholder="文章标题">
+        </div>
+        <div class="form-group">
+          <label>描述 *</label>
+          <input type="text" id="post-desc" placeholder="一句话描述（SEO 重要）">
+        </div>
+        <div class="form-group">
+          <label>标签（逗号分隔）</label>
+          <input type="text" id="post-tags" placeholder="技术, 分享, 教程">
+        </div>
+        <div class="form-group">
+          <label>Slug（URL 路径）</label>
+          <input type="text" id="post-slug" placeholder="自动生成，也可自定义">
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="post-draft">
+          <label for="post-draft">草稿（不发布）</label>
+        </div>
+      </div>
+      <textarea id="editor"></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- Toast 通知 -->
+<div id="toast" class="toast"></div>
+
+<script>
+// ===== 配置 =====
+const REPO = 'yumx3499/blog';
+const BRANCH = 'master';
+const BLOG_DIR = 'src/data/blog';
+
+let TOKEN = '';
+let mde = null;
+let editingFile = null; // { path, sha } 正在编辑的文件
+
+// ===== 登录 =====
+function login() {
+  const input = document.getElementById('token-input').value.trim();
+  if (!input) { toast('请输入 Token', 'error'); return; }
+  TOKEN = input;
+  localStorage.setItem('gh_token', TOKEN);
+  showEditor();
+}
+
+function logout() {
+  TOKEN = '';
+  localStorage.removeItem('gh_token');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('editor-screen').style.display = 'none';
+}
+
+// ===== 初始化 =====
+function showEditor() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('editor-screen').style.display = 'block';
+  initEditor();
+  loadPosts();
+}
+
+function initEditor() {
+  mde = new EasyMDE({
+    element: document.getElementById('editor'),
+    spellChecker: false,
+    autofocus: true,
+    placeholder: '开始写你的文章...\n\n支持 Markdown 语法',
+    status: ['lines', 'words'],
+    toolbar: [
+      'bold', 'italic', 'heading', '|',
+      'quote', 'unordered-list', 'ordered-list', '|',
+      'link', 'image', 'code', '|',
+      'preview', 'side-by-side', 'fullscreen', '|',
+      'guide'
+    ],
+  });
+}
+
+// ===== GitHub API =====
+async function ghApi(path, method = 'GET', body = null) {
+  const res = await fetch(`https://api.github.com/repos/${REPO}/${path}`, {
+    method,
+    headers: {
+      'Authorization': `Bearer ${TOKEN}`,
+      'Accept': 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json',
+    },
+    body: body ? JSON.stringify(body) : null,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `GitHub API 错误: ${res.status}`);
+  }
+  return res.json();
+}
+
+// ===== 文章列表 =====
+async function loadPosts() {
+  const listEl = document.getElementById('post-list');
+  listEl.innerHTML = '<div style="padding:20px;color:#8b949e">加载中...</div>';
+  
+  try {
+    const files = await listMarkdownFiles(BLOG_DIR);
+    files.sort((a, b) => b.name.localeCompare(a.name));
+    
+    if (files.length === 0) {
+      listEl.innerHTML = '<div style="padding:20px;color:#8b949e">还没有文章，点击「写新文章」开始吧！</div>';
+      return;
+    }
+    
+    listEl.innerHTML = files.map(f => {
+      const name = f.name.replace(/\.md$/, '');
+      const isDraft = name.includes('draft');
+      return `<div class="post-item" onclick="editPost('${f.path}', '${f.sha}')">
+        <div>
+          <span class="post-title">${name}</span>
+          ${isDraft ? '<span class="post-draft">草稿</span>' : ''}
+        </div>
+        <span class="post-meta">编辑 →</span>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    listEl.innerHTML = `<div style="padding:20px;color:#f85149">加载失败: ${e.message}</div>`;
+  }
+}
+
+async function listMarkdownFiles(path) {
+  try {
+    const data = await ghApi(`contents/${path}?ref=${BRANCH}`);
+    const files = [];
+    for (const item of data) {
+      if (item.type === 'file' && item.name.endsWith('.md') && !item.name.startsWith('_')) {
+        files.push({ name: item.name, path: item.path, sha: item.sha });
+      } else if (item.type === 'dir') {
+        const subFiles = await listMarkdownFiles(item.path);
+        files.push(...subFiles);
+      }
+    }
+    return files;
+  } catch (e) {
+    return [];
+  }
+}
+
+// ===== 编辑文章 =====
+async function editPost(path, sha) {
+  editingFile = { path, sha };
+  try {
+    const data = await ghApi(`contents/${path}?ref=${BRANCH}`);
+    const content = atob(data.content.replace(/\n/g, ''));
+    const { frontmatter, body } = parseFrontmatter(content);
+    
+    document.getElementById('post-title').value = frontmatter.title || '';
+    document.getElementById('post-desc').value = frontmatter.description || '';
+    document.getElementById('post-tags').value = (frontmatter.tags || []).join(', ');
+    document.getElementById('post-slug').value = frontmatter.slug || '';
+    document.getElementById('post-draft').checked = frontmatter.draft === true;
+    mde.value(body);
+    
+    showEditView();
+    toast('已加载文章', 'info');
+  } catch (e) {
+    toast('加载失败: ' + e.message, 'error');
+  }
+}
+
+function newPost() {
+  editingFile = null;
+  document.getElementById('post-title').value = '';
+  document.getElementById('post-desc').value = '';
+  document.getElementById('post-tags').value = '';
+  document.getElementById('post-slug').value = '';
+  document.getElementById('post-draft').checked = false;
+  mde.value('## Table of contents\n\n## 开始\n\n在这里写你的内容...\n');
+  showEditView();
+}
+
+// ===== 发布 =====
+async function publishPost() {
+  const title = document.getElementById('post-title').value.trim();
+  const desc = document.getElementById('post-desc').value.trim();
+  const tags = document.getElementById('post-tags').value.split(',').map(t => t.trim()).filter(Boolean);
+  const slug = document.getElementById('post-slug').value.trim();
+  const draft = document.getElementById('post-draft').checked;
+  const body = mde.value();
+  
+  if (!title) { toast('标题不能为空', 'error'); return; }
+  if (!desc) { toast('描述不能为空', 'error'); return; }
+  
+  // 生成 slug
+  const finalSlug = slug || title.toLowerCase()
+    .replace(/[^\w\u4e00-\u9fa5]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'untitled';
+  
+  // 生成 frontmatter
+  const now = new Date().toISOString();
+  const frontmatter = `---
+title: ${title}
+description: ${desc}
+pubDatetime: ${now}
+author: 码上就懂
+draft: ${draft}
+tags:
+${tags.length ? tags.map(t => `  - ${t}`).join('\n') : '  - 默认'}
+---
+
+${body}`;
+  
+  try {
+    toast('正在发布...', 'info');
+    
+    const filePath = editingFile ? editingFile.path : `${BLOG_DIR}/${finalSlug}.md`;
+    const commitMsg = editingFile ? `更新: ${title}` : `发布: ${title}`;
+    
+    const payload = {
+      message: commitMsg,
+      content: btoa(unescape(encodeURIComponent(frontmatter))),
+      branch: BRANCH,
+    };
+    
+    if (editingFile && editingFile.sha) {
+      payload.sha = editingFile.sha;
+    }
+    
+    const result = await ghApi(`contents/${filePath}`, 'PUT', payload);
+    editingFile = { path: filePath, sha: result.content.sha };
+    
+    toast('🎉 发布成功！1-2 分钟后生效', 'success');
+  } catch (e) {
+    toast('发布失败: ' + e.message, 'error');
+  }
+}
+
+// ===== 工具函数 =====
+function parseFrontmatter(content) {
+  const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  if (!match) return { frontmatter: {}, body: content };
+  
+  const fm = {};
+  match[1].split('\n').forEach(line => {
+    const idx = line.indexOf(':');
+    if (idx > -1) {
+      let key = line.slice(0, idx).trim();
+      let val = line.slice(idx + 1).trim();
+      if (val.startsWith('[') && val.endsWith(']')) {
+        val = JSON.parse(val);
+      } else if (val === 'true') val = true;
+      else if (val === 'false') val = false;
+      fm[key] = val;
+    }
+  });
+  
+  // 处理 YAML 数组格式
+  if (!fm.tags) {
+    const tagsMatch = match[1].match(/tags:\n((?:  - .+\n?)+)/);
+    if (tagsMatch) {
+      fm.tags = tagsMatch[1].split('\n').filter(l => l.trim().startsWith('- ')).map(l => l.trim().slice(2));
+    }
+  }
+  
+  return { frontmatter: fm, body: match[2] };
+}
+
+function showListView() {
+  document.getElementById('list-view').style.display = 'block';
+  document.getElementById('edit-view').style.display = 'none';
+  loadPosts();
+}
+
+function showEditView() {
+  document.getElementById('list-view').style.display = 'none';
+  document.getElementById('edit-view').style.display = 'block';
+}
+
+function toast(msg, type = 'info') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast ${type} show`;
+  setTimeout(() => el.className = 'toast', 3000);
+}
+
+// ===== 启动 =====
+const savedToken = localStorage.getItem('gh_token');
+if (savedToken) {
+  TOKEN = savedToken;
+  showEditor();
+}
+</script>
 </body>
 </html>
