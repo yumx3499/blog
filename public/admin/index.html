@@ -15,10 +15,26 @@
     .login-card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 40px; max-width: 460px; width: 100%; text-align: center; }
     .login-card h1 { font-size: 24px; margin-bottom: 8px; }
     .login-card p { color: #8b949e; margin-bottom: 24px; font-size: 14px; }
-    .login-card input { width: 100%; padding: 12px 16px; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; color: #e6edf3; font-size: 14px; margin-bottom: 16px; }
-    .login-card input:focus { outline: none; border-color: #58a6ff; }
-    .login-card button { width: 100%; padding: 12px; background: #238636; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: 600; }
-    .login-card button:hover { background: #2ea043; }
+    
+    /* GitHub 登录按钮 */
+    .btn-github {
+      display: flex; align-items: center; justify-content: center; gap: 12px;
+      width: 100%; padding: 14px 24px;
+      background: #238636; color: white; border: none; border-radius: 8px;
+      font-size: 16px; cursor: pointer; font-weight: 600;
+      text-decoration: none; transition: background 0.2s;
+    }
+    .btn-github:hover { background: #2ea043; }
+    .btn-github svg { width: 24px; height: 24px; fill: white; }
+    
+    /* Token 备用登录 */
+    .alt-login { margin-top: 20px; border-top: 1px solid #21262d; padding-top: 20px; }
+    .alt-login summary { color: #484f58; font-size: 13px; cursor: pointer; margin-bottom: 12px; }
+    .alt-login input { width: 100%; padding: 10px 14px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; color: #e6edf3; font-size: 13px; margin-bottom: 10px; }
+    .alt-login input:focus { outline: none; border-color: #58a6ff; }
+    .alt-login button { width: 100%; padding: 10px; background: #21262d; color: #8b949e; border: 1px solid #30363d; border-radius: 6px; font-size: 13px; cursor: pointer; }
+    .alt-login button:hover { background: #30363d; color: #e6edf3; }
+    
     .login-hint { font-size: 12px; color: #484f58; margin-top: 16px; line-height: 1.6; }
     
     /* 编辑器页 */
@@ -74,7 +90,6 @@
     .toast.error { background: #da3633; color: white; }
     .toast.info { background: #1f6feb; color: white; }
     
-    /* 响应式 */
     @media (max-width: 640px) {
       .meta-form { grid-template-columns: 1fr; }
       .topbar { padding: 12px 16px; }
@@ -89,11 +104,23 @@
   <div class="login-card">
     <h1>✍️ 写文章</h1>
     <p>码上就懂 — 博客编辑器</p>
-    <input type="password" id="token-input" placeholder="输入 GitHub Personal Access Token">
-    <button onclick="login()">进入编辑器</button>
+    
+    <!-- GitHub 登录按钮 -->
+    <button class="btn-github" onclick="loginWithGitHub()">
+      <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      用 GitHub 登录
+    </button>
+    
+    <!-- Token 备用登录 -->
+    <details class="alt-login">
+      <summary>或使用 Token 登录</summary>
+      <input type="password" id="token-input" placeholder="粘贴 GitHub Personal Access Token">
+      <button onclick="loginWithToken()">用 Token 进入</button>
+    </details>
+    
     <div class="login-hint">
-      Token 只存在你的浏览器里，不会上传到任何服务器。<br>
-      <a href="https://github.com/settings/tokens" target="_blank" style="color:#58a6ff">去 GitHub 创建 Token →</a>
+      首次使用需要授权 GitHub 访问权限<br>
+      Token 只存在你的浏览器里，不会上传到任何服务器
     </div>
   </div>
 </div>
@@ -156,13 +183,47 @@
 const REPO = 'yumx3499/blog';
 const BRANCH = 'master';
 const BLOG_DIR = 'src/data/blog';
+const OAUTH_BASE = 'https://e8f4ac23e4a692.lhr.life';
 
 let TOKEN = '';
 let mde = null;
-let editingFile = null; // { path, sha } 正在编辑的文件
+let editingFile = null;
 
-// ===== 登录 =====
-function login() {
+// ===== GitHub OAuth 登录 =====
+function loginWithGitHub() {
+  const authUrl = `${OAUTH_BASE}/auth`;
+  const popup = window.open(authUrl, 'github-oauth', 'width=600,height=700');
+  
+  // 监听回调消息
+  function handleMessage(event) {
+    if (typeof event.data === 'string' && event.data.startsWith('authorization:github:success')) {
+      try {
+        const jsonStr = event.data.replace('authorization:github:success:', '');
+        const data = JSON.parse(jsonStr);
+        TOKEN = data.token;
+        localStorage.setItem('gh_token', TOKEN);
+        window.removeEventListener('message', handleMessage);
+        if (popup && !popup.closed) popup.close();
+        showEditor();
+        toast('🎉 登录成功！', 'success');
+      } catch(e) {
+        toast('登录解析失败', 'error');
+      }
+    }
+  }
+  window.addEventListener('message', handleMessage);
+  
+  // 检测弹窗关闭（用户取消）
+  const checkClosed = setInterval(() => {
+    if (popup && popup.closed) {
+      clearInterval(checkClosed);
+      window.removeEventListener('message', handleMessage);
+    }
+  }, 1000);
+}
+
+// ===== Token 备用登录 =====
+function loginWithToken() {
   const input = document.getElementById('token-input').value.trim();
   if (!input) { toast('请输入 Token', 'error'); return; }
   TOKEN = input;
@@ -192,13 +253,7 @@ function initEditor() {
     autofocus: true,
     placeholder: '开始写你的文章...\n\n支持 Markdown 语法',
     status: ['lines', 'words'],
-    toolbar: [
-      'bold', 'italic', 'heading', '|',
-      'quote', 'unordered-list', 'ordered-list', '|',
-      'link', 'image', 'code', '|',
-      'preview', 'side-by-side', 'fullscreen', '|',
-      'guide'
-    ],
+    toolbar: ['bold','italic','heading','|','quote','unordered-list','ordered-list','|','link','image','code','|','preview','side-by-side','fullscreen','|','guide'],
   });
 }
 
@@ -206,17 +261,10 @@ function initEditor() {
 async function ghApi(path, method = 'GET', body = null) {
   const res = await fetch(`https://api.github.com/repos/${REPO}/${path}`, {
     method,
-    headers: {
-      'Authorization': `Bearer ${TOKEN}`,
-      'Accept': 'application/vnd.github.v3+json',
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Authorization': `Bearer ${TOKEN}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
     body: body ? JSON.stringify(body) : null,
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || `GitHub API 错误: ${res.status}`);
-  }
+  if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || `API 错误: ${res.status}`); }
   return res.json();
 }
 
@@ -224,30 +272,16 @@ async function ghApi(path, method = 'GET', body = null) {
 async function loadPosts() {
   const listEl = document.getElementById('post-list');
   listEl.innerHTML = '<div style="padding:20px;color:#8b949e">加载中...</div>';
-  
   try {
     const files = await listMarkdownFiles(BLOG_DIR);
     files.sort((a, b) => b.name.localeCompare(a.name));
-    
-    if (files.length === 0) {
-      listEl.innerHTML = '<div style="padding:20px;color:#8b949e">还没有文章，点击「写新文章」开始吧！</div>';
-      return;
-    }
-    
+    if (files.length === 0) { listEl.innerHTML = '<div style="padding:20px;color:#8b949e">还没有文章，点「写新文章」开始吧！</div>'; return; }
     listEl.innerHTML = files.map(f => {
       const name = f.name.replace(/\.md$/, '');
       const isDraft = name.includes('draft');
-      return `<div class="post-item" onclick="editPost('${f.path}', '${f.sha}')">
-        <div>
-          <span class="post-title">${name}</span>
-          ${isDraft ? '<span class="post-draft">草稿</span>' : ''}
-        </div>
-        <span class="post-meta">编辑 →</span>
-      </div>`;
+      return `<div class="post-item" onclick="editPost('${f.path}','${f.sha}')"><div><span class="post-title">${name}</span>${isDraft?'<span class="post-draft">草稿</span>':''}</div><span class="post-meta">编辑 →</span></div>`;
     }).join('');
-  } catch (e) {
-    listEl.innerHTML = `<div style="padding:20px;color:#f85149">加载失败: ${e.message}</div>`;
-  }
+  } catch (e) { listEl.innerHTML = `<div style="padding:20px;color:#f85149">加载失败: ${e.message}</div>`; }
 }
 
 async function listMarkdownFiles(path) {
@@ -255,17 +289,11 @@ async function listMarkdownFiles(path) {
     const data = await ghApi(`contents/${path}?ref=${BRANCH}`);
     const files = [];
     for (const item of data) {
-      if (item.type === 'file' && item.name.endsWith('.md') && !item.name.startsWith('_')) {
-        files.push({ name: item.name, path: item.path, sha: item.sha });
-      } else if (item.type === 'dir') {
-        const subFiles = await listMarkdownFiles(item.path);
-        files.push(...subFiles);
-      }
+      if (item.type === 'file' && item.name.endsWith('.md') && !item.name.startsWith('_')) files.push({ name: item.name, path: item.path, sha: item.sha });
+      else if (item.type === 'dir') { const sub = await listMarkdownFiles(item.path); files.push(...sub); }
     }
     return files;
-  } catch (e) {
-    return [];
-  }
+  } catch (e) { return []; }
 }
 
 // ===== 编辑文章 =====
@@ -275,19 +303,15 @@ async function editPost(path, sha) {
     const data = await ghApi(`contents/${path}?ref=${BRANCH}`);
     const content = atob(data.content.replace(/\n/g, ''));
     const { frontmatter, body } = parseFrontmatter(content);
-    
     document.getElementById('post-title').value = frontmatter.title || '';
     document.getElementById('post-desc').value = frontmatter.description || '';
     document.getElementById('post-tags').value = (frontmatter.tags || []).join(', ');
     document.getElementById('post-slug').value = frontmatter.slug || '';
     document.getElementById('post-draft').checked = frontmatter.draft === true;
     mde.value(body);
-    
     showEditView();
     toast('已加载文章', 'info');
-  } catch (e) {
-    toast('加载失败: ' + e.message, 'error');
-  }
+  } catch (e) { toast('加载失败: ' + e.message, 'error'); }
 }
 
 function newPost() {
@@ -309,108 +333,53 @@ async function publishPost() {
   const slug = document.getElementById('post-slug').value.trim();
   const draft = document.getElementById('post-draft').checked;
   const body = mde.value();
-  
   if (!title) { toast('标题不能为空', 'error'); return; }
   if (!desc) { toast('描述不能为空', 'error'); return; }
-  
-  // 生成 slug
-  const finalSlug = slug || title.toLowerCase()
-    .replace(/[^\w\u4e00-\u9fa5]+/g, '-')
-    .replace(/^-+|-+$/g, '') || 'untitled';
-  
-  // 生成 frontmatter
+  const finalSlug = slug || title.toLowerCase().replace(/[^\w\u4e00-\u9fa5]+/g, '-').replace(/^-+|-+$/g, '') || 'untitled';
   const now = new Date().toISOString();
-  const frontmatter = `---
-title: ${title}
-description: ${desc}
-pubDatetime: ${now}
-author: 码上就懂
-draft: ${draft}
-tags:
-${tags.length ? tags.map(t => `  - ${t}`).join('\n') : '  - 默认'}
----
-
-${body}`;
-  
+  const frontmatter = `---\ntitle: ${title}\ndescription: ${desc}\npubDatetime: ${now}\nauthor: 码上就懂\ndraft: ${draft}\ntags:\n${tags.length ? tags.map(t => `  - ${t}`).join('\n') : '  - 默认'}\n---\n\n${body}`;
   try {
     toast('正在发布...', 'info');
-    
     const filePath = editingFile ? editingFile.path : `${BLOG_DIR}/${finalSlug}.md`;
     const commitMsg = editingFile ? `更新: ${title}` : `发布: ${title}`;
-    
-    const payload = {
-      message: commitMsg,
-      content: btoa(unescape(encodeURIComponent(frontmatter))),
-      branch: BRANCH,
-    };
-    
-    if (editingFile && editingFile.sha) {
-      payload.sha = editingFile.sha;
-    }
-    
+    const payload = { message: commitMsg, content: btoa(unescape(encodeURIComponent(frontmatter))), branch: BRANCH };
+    if (editingFile && editingFile.sha) payload.sha = editingFile.sha;
     const result = await ghApi(`contents/${filePath}`, 'PUT', payload);
     editingFile = { path: filePath, sha: result.content.sha };
-    
     toast('🎉 发布成功！1-2 分钟后生效', 'success');
-  } catch (e) {
-    toast('发布失败: ' + e.message, 'error');
-  }
+  } catch (e) { toast('发布失败: ' + e.message, 'error'); }
 }
 
 // ===== 工具函数 =====
 function parseFrontmatter(content) {
   const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
   if (!match) return { frontmatter: {}, body: content };
-  
   const fm = {};
   match[1].split('\n').forEach(line => {
     const idx = line.indexOf(':');
     if (idx > -1) {
       let key = line.slice(0, idx).trim();
       let val = line.slice(idx + 1).trim();
-      if (val.startsWith('[') && val.endsWith(']')) {
-        val = JSON.parse(val);
-      } else if (val === 'true') val = true;
+      if (val.startsWith('[') && val.endsWith(']')) val = JSON.parse(val);
+      else if (val === 'true') val = true;
       else if (val === 'false') val = false;
       fm[key] = val;
     }
   });
-  
-  // 处理 YAML 数组格式
   if (!fm.tags) {
     const tagsMatch = match[1].match(/tags:\n((?:  - .+\n?)+)/);
-    if (tagsMatch) {
-      fm.tags = tagsMatch[1].split('\n').filter(l => l.trim().startsWith('- ')).map(l => l.trim().slice(2));
-    }
+    if (tagsMatch) fm.tags = tagsMatch[1].split('\n').filter(l => l.trim().startsWith('- ')).map(l => l.trim().slice(2));
   }
-  
   return { frontmatter: fm, body: match[2] };
 }
 
-function showListView() {
-  document.getElementById('list-view').style.display = 'block';
-  document.getElementById('edit-view').style.display = 'none';
-  loadPosts();
-}
-
-function showEditView() {
-  document.getElementById('list-view').style.display = 'none';
-  document.getElementById('edit-view').style.display = 'block';
-}
-
-function toast(msg, type = 'info') {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.className = `toast ${type} show`;
-  setTimeout(() => el.className = 'toast', 3000);
-}
+function showListView() { document.getElementById('list-view').style.display = 'block'; document.getElementById('edit-view').style.display = 'none'; loadPosts(); }
+function showEditView() { document.getElementById('list-view').style.display = 'none'; document.getElementById('edit-view').style.display = 'block'; }
+function toast(msg, type = 'info') { const el = document.getElementById('toast'); el.textContent = msg; el.className = `toast ${type} show`; setTimeout(() => el.className = 'toast', 3000); }
 
 // ===== 启动 =====
 const savedToken = localStorage.getItem('gh_token');
-if (savedToken) {
-  TOKEN = savedToken;
-  showEditor();
-}
+if (savedToken) { TOKEN = savedToken; showEditor(); }
 </script>
 </body>
 </html>
